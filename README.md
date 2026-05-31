@@ -27,6 +27,7 @@
 9. [Günlük Kullanım Komutları](#9-günlük-kullanım-komutları)
 10. [Sorun Giderme](#10-sorun-giderme)
 11. [Gelişmiş Ayarlar (İsteğe Bağlı)](#11-gelişmiş-ayarlar-isteğe-bağlı)
+12. [Ubuntu 24.04 (Noble) — Önemli Farklar](#12-ubuntu-2404-noble--önemli-farklar)
 
 ---
 
@@ -765,6 +766,136 @@ Kurulum tamamlandıktan sonra şunları doğrula:
 - [ ] Key ile bağlantıyı test ettim, şifresiz giriyor
 - [ ] Telefona SSH uygulaması kurdum ve key'i aktardım
 - [ ] Telefondan test bağlantısı yaptım
+
+---
+
+## 12. Ubuntu 24.04 (Noble) — Önemli Farklar
+
+> Ubuntu 22.04 kullananlar bu bölümü atlayabilir. Ubuntu 24.04 (Noble Numbat) kullananlar için rehberin bazı adımları farklı çalışır.
+
+---
+
+### 12.1 SSH Servis Adı Değişti
+
+Ubuntu 24.04'te SSH servisi `sshd` değil `ssh` olarak adlandırılır.
+
+| İşlem | Ubuntu 22.04 | Ubuntu 24.04 |
+|-------|-------------|-------------|
+| Yeniden başlat | `sudo systemctl restart sshd` | `sudo systemctl restart ssh` |
+| Durdur | `sudo systemctl stop sshd` | `sudo systemctl stop ssh` |
+| Başlat | `sudo systemctl start sshd` | `sudo systemctl start ssh` |
+| Durum | `sudo systemctl status sshd` | `sudo systemctl status ssh` |
+
+> `sshd.service not found` hatası alıyorsan Ubuntu 24.04 kullanıyorsun demektir. `ssh` komutunu kullan.
+
+---
+
+### 12.2 Log Dosyası Değişti
+
+Ubuntu 24.04, geleneksel `/var/log/auth.log` yerine varsayılan olarak **systemd journal** kullanır. Bu dosya bazen oluşmaz veya boş gelir.
+
+**Kontrol et:**
+
+```bash
+ls -la /var/log/auth.log
+```
+
+**Dosya yoksa** iki seçeneğin var:
+
+**Seçenek A — rsyslog kur (auth.log'u geri getir, önerilen):**
+
+```bash
+sudo apt install rsyslog -y
+sudo systemctl enable rsyslog
+sudo systemctl start rsyslog
+```
+
+Kurulumdan sonra `/var/log/auth.log` otomatik oluşur. Fail2Ban'ı yeniden başlat:
+
+```bash
+sudo systemctl restart fail2ban
+```
+
+**Seçenek B — journal'ı logpath olarak kullan:**
+
+`jail.local` dosyasında `[sshd]` bölümünü şöyle değiştir:
+
+```ini
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+backend = systemd
+maxretry = 3
+bantime = 86400
+findtime = 10m
+```
+
+> `logpath` satırını kaldır, yerine `backend = systemd` ekle. Fail2Ban doğrudan systemd journal'ını okur.
+
+---
+
+### 12.3 sshd_config Dosyası Bölündü
+
+Ubuntu 24.04'te SSH yapılandırması tek dosya yerine klasör yapısına taşındı.
+
+```
+/etc/ssh/sshd_config          → Ana dosya (dokunma)
+/etc/ssh/sshd_config.d/       → Özel ayarlar buraya
+```
+
+`PasswordAuthentication no` ayarını yaparken (Bölüm 7.6) ana dosyayı düzenleme. Bunun yerine yeni bir dosya oluştur:
+
+```bash
+sudo nano /etc/ssh/sshd_config.d/99-custom.conf
+```
+
+İçine şunu yaz:
+
+```
+PasswordAuthentication no
+```
+
+Kaydet ve SSH'yi yeniden başlat:
+
+```bash
+sudo systemctl restart ssh
+```
+
+> Bu yöntem Ubuntu güncellemelerinde ayarlarının üzerine yazılmasını engeller.
+
+---
+
+### 12.4 Ubuntu 24.04 için Tam jail.local Örneği
+
+```ini
+[DEFAULT]
+findtime = 10m
+maxretry = 5
+bantime = 3600
+ignoreip = 127.0.0.1/8 ::1 KENDI_IP_ADRESIN
+banaction = iptables-multiport
+bantime.increment = true
+bantime.multiplier = 2
+
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+backend = systemd
+maxretry = 3
+bantime = 86400
+findtime = 10m
+```
+
+---
+
+### 12.5 Ubuntu 24.04 Kontrol Listesi
+
+- [ ] `sudo systemctl restart ssh` ile (sshd değil) SSH'yi yeniden başlattım
+- [ ] `/var/log/auth.log` var mı kontrol ettim, yoksa `rsyslog` kurdum veya `backend = systemd` ekledim
+- [ ] Şifre kapatmayı `/etc/ssh/sshd_config.d/99-custom.conf` dosyasına ekledim
+- [ ] `sudo systemctl status ssh` ile SSH'nin çalıştığını doğruladım
 
 ---
 
