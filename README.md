@@ -835,7 +835,49 @@ findtime = 10m
 
 ---
 
-### 12.3 sshd_config Dosyası Bölündü
+### 12.3 PubkeyAuthentication Varsayılan Olarak Kapalı Geliyor
+
+> Ubuntu 22.04'te bu adım **gerekmiyordu** çünkü `PubkeyAuthentication yes` zaten aktifti. Ubuntu 24.04'te aynı satır yorum olarak (`#` ile) geliyor, yani devre dışı. SSH key ile bağlanamıyorsan ilk bakacağın yer burasıdır.
+
+**Neden farklı?** Ubuntu 24.04, `sshd_config` dosyasını daha kısıtlayıcı varsayılanlarla sunuyor. Yorum satırı olan ayarlar devre dışı sayılır.
+
+**Kontrol et:**
+
+```bash
+grep PubkeyAuthentication /etc/ssh/sshd_config
+```
+
+Eğer çıktı şöyleyse (`#` ile başlıyorsa) → **devre dışı:**
+
+```
+#PubkeyAuthentication yes
+```
+
+**Düzeltmek için:**
+
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+
+`#PubkeyAuthentication yes` satırını bul, başındaki `#` işaretini ve yanındaki boşluğu sil:
+
+```
+# Önce (devre dışı):
+#PubkeyAuthentication yes
+
+# Sonra (aktif):
+PubkeyAuthentication yes
+```
+
+Kaydet (`Ctrl+O` → `Enter` → `Ctrl+X`) ve SSH'yi yeniden başlat:
+
+```bash
+sudo systemctl restart ssh
+```
+
+---
+
+### 12.5 sshd_config Dosyası Bölündü
 
 Ubuntu 24.04'te SSH yapılandırması tek dosya yerine klasör yapısına taşındı.
 
@@ -866,7 +908,7 @@ sudo systemctl restart ssh
 
 ---
 
-### 12.4 Ubuntu 24.04 için Tam jail.local Örneği
+### 12.6 Ubuntu 24.04 için Tam jail.local Örneği
 
 ```ini
 [DEFAULT]
@@ -890,10 +932,12 @@ findtime = 10m
 
 ---
 
-### 12.5 Ubuntu 24.04 Kontrol Listesi
+### 12.7 Ubuntu 24.04 Kontrol Listesi
 
+- [ ] `grep PubkeyAuthentication /etc/ssh/sshd_config` ile kontrol ettim, `#` yoksa aktif
+- [ ] `PubkeyAuthentication yes` satırındaki `#` işaretini kaldırdım
 - [ ] `sudo systemctl restart ssh` ile (sshd değil) SSH'yi yeniden başlattım
-- [ ] `/var/log/auth.log` var mı kontrol ettim, yoksa `rsyslog` kurdum veya `backend = systemd` ekledim
+- [ ] `/var/log/auth.log` var mı kontrol ettim, yoksa `rsyslog` kurdum
 - [ ] Şifre kapatmayı `/etc/ssh/sshd_config.d/99-custom.conf` dosyasına ekledim
 - [ ] `sudo systemctl status ssh` ile SSH'nin çalıştığını doğruladım
 
