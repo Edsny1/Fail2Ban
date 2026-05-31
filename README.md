@@ -353,6 +353,12 @@ cat ~/.ssh/id_ed25519.pub | ssh kullanici_adin@sunucu_ip "mkdir -p ~/.ssh && cat
 type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh kullanici_adin@sunucu_ip "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
 ```
 
+
+Sunucu /root dizinine dosyayı yükleyip aşağıdaki komutla terminal aracılığı ile /.ssh klasorüne ekleyebilirsiniz
+```
+cat ~/id_ed25519.pub >> ~/.ssh/authorized_keys
+```
+
 ---
 
 ### 7.4 Sunucuda Dosya İzinlerini Ayarla
